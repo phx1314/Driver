@@ -1,0 +1,12 @@
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--files-path  相当于 getFilesDir（）-->
+    <root-path path="" name="camera_photos" />
+    <files-path name="my_images" path="images/"/>
+    
+    <external-path
+        name="files_root"
+        path="Android/data/com.ndtlg.driver/"/>
+    <external-path
+        name="external_storage"
+        path="."/>
+</paths>

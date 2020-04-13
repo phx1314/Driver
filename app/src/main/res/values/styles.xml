@@ -1,0 +1,37 @@
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <style name="AppTheme_pub" parent="Theme.AppCompat.Light.DarkActionBar">
+        <item name="android:statusBarColor">#ffffff</item>
+        <item name="android:colorPrimaryDark">#001110</item>
+        <item name="android:windowBackground">@mipmap/loading</item>
+        <item name="android:fitsSystemWindows">true</item>
+        <!--        <item name="android:windowAnimationStyle">@style/MyActivitySiwtchAnimation</item>-->
+        <!--        <item name="android:windowDrawsSystemBarBackgrounds">true</item>-->
+        <!--        <item name="android:windowTranslucentNavigation">true</item>-->
+        <item name="android:navigationBarColor">@android:color/black</item>
+    </style>
+
+    <style name="actNNS" parent="AppTheme_pub">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <!--        <item name="android:windowDrawsSystemBarBackgrounds">true</item>-->
+        <item name="android:windowTranslucentNavigation">true</item>
+    </style>
+
+    <style name="actNN" parent="AppTheme_pub">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">true</item>
+        <!--          &lt;!&ndash;        <item name="android:windowDrawsSystemBarBackgrounds">true</item>&ndash;&gt;-->
+        <!--          <item name="android:windowTranslucentNavigation">true</item>-->
+    </style>
+</resources>
