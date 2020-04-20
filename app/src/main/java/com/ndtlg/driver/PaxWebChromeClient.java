@@ -6,6 +6,7 @@ import android.content.ClipData;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
@@ -24,6 +25,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.FileProvider;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 
 import static android.app.Activity.RESULT_OK;
 
@@ -101,15 +103,26 @@ public class PaxWebChromeClient extends WebChromeClient {
     private void takePhoto() {
         AlertDialog.Builder alertDialog = new AlertDialog.Builder(mActivity);
         alertDialog.setTitle("选择");
-        alertDialog.setItems(new CharSequence[]{"相机", "相册"},
+        alertDialog.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialog) {
+                if (uploadFile != null) {
+                    uploadFile.onReceiveValue(null);
+                    uploadFile = null;
+                }
+                if (uploadFiles != null) {
+                    uploadFiles.onReceiveValue(null);
+                    uploadFiles = null;
+                }
+            }
+        });
+        alertDialog.setItems(new CharSequence[]{"相机", "相册", "视频"},
                 new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        File fileUri = new File(Environment.getExternalStorageDirectory() + "/" + SystemClock.currentThreadTimeMillis() + ".jpg");
+                        File fileUri = new File(mActivity.getExternalCacheDir() + "/" + SystemClock.currentThreadTimeMillis() + ".jpg");
                         imageUri = Uri.fromFile(fileUri);
                         if (which == 0) {
-//                            File fileUri = new File(Environment.getExternalStorageDirectory() + "/" + SystemClock.currentThreadTimeMillis() + ".jpg");
-//                            imageUri = Uri.fromFile(fileUri);
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                                 imageUri = FileProvider.getUriForFile(mActivity, "com.ndtlg.driver.Mapplication", fileUri);//通过FileProvider创建一个content类型的Uri
                             } else {
@@ -118,11 +131,33 @@ public class PaxWebChromeClient extends WebChromeClient {
                             Intent intent = new Intent("android.media.action.IMAGE_CAPTURE");
                             intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
                             mActivity.startActivityForResult(intent, CHOOSE_REQUEST_CODE);
-                        } else {
-                            Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-                            i.addCategory(Intent.CATEGORY_OPENABLE);
-                            i.setType("image/*");
-                            mActivity.startActivityForResult(Intent.createChooser(i, "File Browser"), CHOOSE_REQUEST_CODE);
+                        } else if (which == 1) {
+//                            Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+//                            i.addCategory(Intent.CATEGORY_OPENABLE);
+//                            i.setType("image/*");
+//                            mActivity.startActivityForResult(Intent.createChooser(i, "File Browser"), CHOOSE_REQUEST_CODE);
+
+
+                            Intent intent = new Intent(Intent.ACTION_PICK,null);
+                            //此处调用了图片选择器
+                            //如果直接写intent.setDataAndType("image/*");
+                            //调用的是系统图库
+                            intent.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
+                            intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+                            mActivity.startActivityForResult(Intent.createChooser(intent, "File Browser"), CHOOSE_REQUEST_CODE);
+                        } else if (which == 2) {
+                            fileUri = new File(Environment.getExternalStorageDirectory() + "/" + System.currentTimeMillis() + ".mp4");
+                            imageUri = Uri.fromFile(fileUri);
+                            Intent intent = new Intent();
+                            intent.setAction("android.media.action.VIDEO_CAPTURE");
+                            intent.addCategory("android.intent.category.DEFAULT");
+                            //设置视频质量
+                            intent.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, 0.8);
+                            //设置视频时长
+//                            intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 10);
+//                            intent.putExtra(MediaStore.EXTRA_DURATION_LIMIT, 20);
+                            intent.putExtra(MediaStore.EXTRA_OUTPUT, imageUri);
+                            mActivity.startActivityForResult(intent, 5);
                         }
                     }
                 });
@@ -142,6 +177,7 @@ public class PaxWebChromeClient extends WebChromeClient {
         if (uploadFiles == null) {
             return;
         }
+        if (requestCode != 5) imageUri = getUri(imageUri);
         Uri[] results = null;
         if (resultCode == Activity.RESULT_OK) {
             if (data == null) {
@@ -167,8 +203,29 @@ public class PaxWebChromeClient extends WebChromeClient {
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == CHOOSE_REQUEST_CODE) {
             if (null == uploadFile && null == uploadFiles) return;
-            cropRawPhoto(mActivity, data != null ? data.getData() : imageUri, imageUri, CHOOSE_REQUEST_CODE2);
+            try {
+                cropRawPhoto(mActivity, data != null ? data.getData() : imageUri, imageUri, CHOOSE_REQUEST_CODE2);
+            } catch (Exception e) {
+                e.printStackTrace();
+                Uri result = data == null || resultCode != RESULT_OK ? null : data.getData();
+                if (result != null) result = getUri(result);
+                if (uploadFiles != null) {
+                    onActivityResultAboveL(requestCode, resultCode, data);
+                } else if (uploadFile != null) {
+                    uploadFile.onReceiveValue(result);
+                    uploadFile = null;
+                }
+            }
         } else if (requestCode == CHOOSE_REQUEST_CODE2) {
+            Uri result = data == null || resultCode != RESULT_OK ? null : data.getData();
+            if (result != null) result = getUri(result);
+            if (uploadFiles != null) {
+                onActivityResultAboveL(requestCode, resultCode, data);
+            } else if (uploadFile != null) {
+                uploadFile.onReceiveValue(result);
+                uploadFile = null;
+            }
+        } else if (requestCode == 5) {
             Uri result = data == null || resultCode != RESULT_OK ? null : data.getData();
             if (uploadFiles != null) {
                 onActivityResultAboveL(requestCode, resultCode, data);
@@ -177,35 +234,17 @@ public class PaxWebChromeClient extends WebChromeClient {
                 uploadFile = null;
             }
         }
-//        if (resultCode == Activity.RESULT_OK) {
-//            switch (requestCode) {
-//                case CHOOSE_REQUEST_CODE:
-//                    if (null != uploadFile) {
-//                        Uri result = data == null || resultCode != Activity.RESULT_OK ? null
-//                                : data.getData();
-//                        uploadFile.onReceiveValue(result);
-//                        uploadFile = null;
-//                    }
-//                    if (null != uploadFiles) {
-//                        Uri result = data == null || resultCode != Activity.RESULT_OK ? null
-//                                : data.getData();
-//                        uploadFiles.onReceiveValue(new Uri[]{result==null?imageUri:result});
-//                        uploadFiles = null;
-//                    }
-//                    break;
-//                default:
-//                    break;
-//            }
-//        } else if (resultCode == Activity.RESULT_CANCELED) {
-//            if (null != uploadFile) {
-//                uploadFile.onReceiveValue(null);
-//                uploadFile = null;
-//            }
-//            if (null != uploadFiles) {
-//                uploadFiles.onReceiveValue(null);
-//                uploadFiles = null;
-//            }
-//        }
+
+    }
+
+    public Uri getUri(Uri result) {
+        try {
+            Bitmap bitmap = BitmapFactory.decodeStream(mActivity.getContentResolver().openInputStream(result));
+            return Uri.parse(MediaStore.Images.Media.insertImage(mActivity.getContentResolver(), BitmapRead.decodeBitmapSize(bitmap, 800, 800), null, null));
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return result;
+        }
     }
 
     /**
@@ -227,8 +266,8 @@ public class PaxWebChromeClient extends WebChromeClient {
         intent.putExtra("crop", "true");
         intent.putExtra("aspectX", 0);
         intent.putExtra("aspectY", 0);
-        intent.putExtra("outputX", 300);
-        intent.putExtra("outputY", 300);
+        intent.putExtra("outputX", 600);
+        intent.putExtra("outputY", 600);
         intent.putExtra(MediaStore.EXTRA_OUTPUT, outputUri);
         intent.putExtra("outputFormat", Bitmap.CompressFormat.JPEG.toString());
         activity.startActivityForResult(intent, requestCode);
